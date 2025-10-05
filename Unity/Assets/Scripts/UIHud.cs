@@ -44,6 +44,13 @@ public class UIHud : MonoBehaviour
         this.onKnock = onKnock;
         this.onWalkAway = onWalkAway;
         if (doorPovRoot) doorPovRoot.SetActive(show);
+
+        // Optional safety: if someone disables POV UI externally, ensure reset
+        if (!show && GameController.I != null)
+        {
+            // Nothing else needed; GameController.ExitDoorPOV() already resets the door.
+            // Just make sure all exits flow through ExitDoorPOV().
+        }
     }
 
     void Update()
