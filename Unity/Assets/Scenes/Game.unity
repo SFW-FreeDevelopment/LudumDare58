@@ -2066,8 +2066,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 7:52 pm
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: f90b471783c753d4f99e663510096890, type: 2}
-  m_sharedMaterial: {fileID: -1058715485870966794, guid: f90b471783c753d4f99e663510096890, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: c925d58f0021fb74b908b87dbdd824c4, type: 2}
+  m_sharedMaterial: {fileID: 3034899487981952, guid: c925d58f0021fb74b908b87dbdd824c4, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2091,8 +2091,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 52
-  m_fontSizeBase: 52
+  m_fontSize: 44
+  m_fontSizeBase: 44
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2695,7 +2695,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: -2
-  m_Sprite: {fileID: 21300000, guid: eb352daae9e42b642bfd1227ae45b554, type: 3}
+  m_Sprite: {fileID: 21300000, guid: d735c00cb18a9a148a134eee68e3f381, type: 3}
   m_Color: {r: 0.21632767, g: 0.34591186, b: 0.18600917, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -3186,8 +3186,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 16 Candy
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: f90b471783c753d4f99e663510096890, type: 2}
-  m_sharedMaterial: {fileID: -1058715485870966794, guid: f90b471783c753d4f99e663510096890, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: c925d58f0021fb74b908b87dbdd824c4, type: 2}
+  m_sharedMaterial: {fileID: 3034899487981952, guid: c925d58f0021fb74b908b87dbdd824c4, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -3211,8 +3211,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 52
-  m_fontSizeBase: 52
+  m_fontSize: 44
+  m_fontSizeBase: 44
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
