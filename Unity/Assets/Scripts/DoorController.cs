@@ -3,6 +3,8 @@ using System.Collections;
 
 public class DoorController : MonoBehaviour
 {
+    public System.Action OnDoorOpened;
+    
     [Header("Linked Components")]
     public DoorGlowController glow;            // optional helper for fading glow
     [SerializeField] SpriteRenderer doorRenderer;      // main door sprite
@@ -93,6 +95,7 @@ public class DoorController : MonoBehaviour
         if (glow) glow.SetLit(true);
 
         opening = false;
+        OnDoorOpened?.Invoke();
         Debug.Log($"[DoorController] Door '{name}' opened!");
     }
 
