@@ -24,6 +24,7 @@ public class GameController : MonoBehaviour
     private GameState _state = GameState.Explore;
     private Transform _lastDoorAnchor;
     private DoorController currentDoor;
+    private MiniGameArrowsQTE activeMiniGame;
 
     void Awake()
     {
@@ -102,17 +103,61 @@ public class GameController : MonoBehaviour
     public void Knock()
     {
         if (_state != GameState.DoorPOV) return;
+        if (currentDoor == null) { Debug.LogWarning("[GameController] No DoorController."); return; }
 
-        Debug.Log("[GameController] Knock initiated.");
+        // Prevent double-subscribe
+        currentDoor.OnDoorOpened -= HandleDoorOpened;
+        currentDoor.OnDoorOpened += HandleDoorOpened;
 
-        // Stub: launch door knock/open sequence (and later your Trick/Treat logic)
-        if (currentDoor != null)
-            currentDoor.KnockAndOpen();
-        else
-            Debug.LogWarning("[GameController] No DoorController found for this door POV.");
+        ui.PlayKnockFeedback();
+        currentDoor.KnockAndOpen();
+    }
+    
+    private void HandleDoorOpened()
+    {
+        // Stop listening after one open
+        if (currentDoor != null) currentDoor.OnDoorOpened -= HandleDoorOpened;
+        StartMiniGame();
+    }
+    
+    private void StartMiniGame()
+    {
+        // Hide the POV buttons (Knock/Walk Away) and show mini-game panel
+        ui.ShowDoorPOVButtons(false);
+        ui.ShowMiniGame(true, "…", null); // text will be set by the minigame
 
-        // Optional tiny UI feedback
-        if (ui) ui.PlayKnockFeedback();
+        // Create a simple QTE runner under the UI (or any manager object)
+        // You can also add this component to a prefab if you prefer.
+        activeMiniGame = ui.gameObject.AddComponent<MiniGameArrowsQTE>();
+        activeMiniGame.Run(3, // sequence length
+        onTextChanged: txt => ui.SetMiniGameInstruction(txt),
+        onComplete: success =>
+        {
+            // Clean up runner
+            if (activeMiniGame) Destroy(activeMiniGame);
+            activeMiniGame = null;
+
+            ui.ShowMiniGame(false, "", null);
+            ui.ShowDoorPOVButtons(true); // bring buttons back if you want
+
+            if (success)
+            {
+                int reward = Random.Range(1, 11); // 1..10 inclusive
+                Debug.Log($"[MiniGame] Success! Candy +{reward}");
+
+                // Award candy using your existing GameManager if present
+                if (GameManager.I != null) GameManager.I.AddCandy(reward);
+                else Debug.Log($"[GameController] (No GameManager) Would have added {reward} candy.");
+
+                // Optional: auto-exit POV on success
+                ExitDoorPOV();
+            }
+            else
+            {
+                Debug.Log("[MiniGame] Failed.");
+                // You could allow retry, keep POV open, etc.
+            }
+        });
     }
 
     // ========= HELPERS =========
