@@ -1,24 +1,37 @@
-﻿using UnityEngine;
+﻿// CandyCatchMiniGame.cs
+using UnityEngine;
 using System;
 using System.Collections.Generic;
 
 public class CandyCatchMiniGame : MonoBehaviour
 {
     [Header("Prefabs & Area")]
-    public GameObject bucketPrefab;           // prefab with BucketController + BucketCollector
-    public List<GameObject> candyPrefabs;     // your different candy prefabs (must have Rigidbody2D + Collider2D + CandyMarker)
-    [Tooltip("World-space min (x,y) and max (x,y) of the play area (visible on camera).")]
+    public GameObject bucketPrefab;
+    public List<GameObject> candyPrefabs;
+
+    [Tooltip("Auto-align the play area to the current camera view each time Run() is called.")]
+    public bool autoAlignToCamera = true;
+    public Camera camOverride;               // leave null to use Camera.main
+
+    [Tooltip("Margins from camera edges (world units).")]
+    public float marginLeft = 0.5f, marginRight = 0.5f, marginTop = 0.8f, marginBottom = 1.0f;
+
+    [Tooltip("Computed/Manual area bounds (world space).")]
     public Vector2 areaMin = new Vector2(-6f, -3.5f);
     public Vector2 areaMax = new Vector2( 6f,  3.5f);
 
     [Header("Bucket")]
-    public float bucketY = -3.0f;             // fixed Y where the bucket sits
-    public float bucketMoveSpeed = 10f;       // horizontal move speed
+    public float bucketY = -3.0f;
+    public float bucketMoveSpeed = 10f;
 
     [Header("Spawning")]
-    public float spawnY = 3.5f;               // Y from which candy drops
-    public float spawnInterval = 0.35f;       // time between spawns
-    public float candyCleanupY = -5.0f;       // if candies fall below this, they are removed
+    public float spawnY = 3.5f;
+    public float spawnInterval = 0.35f;
+    public float candyCleanupY = -5.0f;
+
+    [Header("Sorting (visual layering)")]
+    public string sortingLayerName = "UI";   // make sure this exists, or use "Default"
+    public int sortingOrder = 500;
 
     private int targetCount;
     private int caughtCount;
@@ -41,8 +54,15 @@ public class CandyCatchMiniGame : MonoBehaviour
         this.spawnTimer = 0f;
         this.running = true;
 
+        if (autoAlignToCamera) AlignToCamera();
+
         // Create bucket
-        bucketInstance = Instantiate(bucketPrefab, new Vector3(0, spawnY, 0), Quaternion.identity, transform);
+        bucketInstance = Instantiate(bucketPrefab);
+        bucketInstance.transform.position = new Vector3(
+            Mathf.Clamp(0f, areaMin.x, areaMax.x), // center-ish; you can start at player x if you want
+            bucketY,
+            0f
+        );
         var bucketCtrl = bucketInstance.GetComponent<BucketController>();
         if (bucketCtrl)
         {
@@ -50,14 +70,12 @@ public class CandyCatchMiniGame : MonoBehaviour
             bucketCtrl.boundsMin = new Vector2(areaMin.x, bucketY);
             bucketCtrl.boundsMax = new Vector2(areaMax.x, bucketY);
         }
-
         var collector = bucketInstance.GetComponentInChildren<BucketCollector>(includeInactive: true);
-        if (collector)
-        {
-            collector.Init(this);
-        }
+        if (collector) collector.Init(this);
 
-        // Ensure immediate progress text
+        // Put bucket on desired sorting layer/order
+        ApplySorting(bucketInstance);
+
         onProgress?.Invoke(caughtCount);
     }
 
@@ -65,7 +83,6 @@ public class CandyCatchMiniGame : MonoBehaviour
     {
         if (!running) return;
 
-        // Spawn candies at interval until we reach targetCount
         if (spawned < targetCount)
         {
             spawnTimer -= Time.deltaTime;
@@ -77,7 +94,6 @@ public class CandyCatchMiniGame : MonoBehaviour
             }
         }
 
-        // Cleanup candies that fell off-screen
         for (int i = liveCandies.Count - 1; i >= 0; i--)
         {
             if (!liveCandies[i]) { liveCandies.RemoveAt(i); continue; }
@@ -88,37 +104,30 @@ public class CandyCatchMiniGame : MonoBehaviour
             }
         }
 
-        // End when all candies are either caught or gone AND we've spawned them all
         if (spawned >= targetCount && liveCandies.Count == 0)
-        {
             Finish();
-        }
     }
 
     private void SpawnCandy()
     {
         if (candyPrefabs == null || candyPrefabs.Count == 0) return;
 
-        // random prefab & x position
         var prefab = candyPrefabs[UnityEngine.Random.Range(0, candyPrefabs.Count)];
         float x = UnityEngine.Random.Range(areaMin.x, areaMax.x);
         Vector3 pos = new Vector3(x, spawnY, 0f);
 
-        var go = Instantiate(prefab, pos, Quaternion.identity, transform);
+        var go = Instantiate(prefab, pos, Quaternion.identity);
         liveCandies.Add(go);
 
-        // Ensure candy has a marker so collector can recognize it
         if (!go.GetComponent<CandyMarker>()) go.AddComponent<CandyMarker>();
-
-        // Make sure it has a Rigidbody2D and Collider2D set up
-        var rb = go.GetComponent<Rigidbody2D>();
-        if (!rb) rb = go.AddComponent<Rigidbody2D>();
+        var rb = go.GetComponent<Rigidbody2D>(); if (!rb) rb = go.AddComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Dynamic;
-        rb.gravityScale = 1f;
+        rb.gravityScale = 0.5f;
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+        ApplySorting(go);
     }
 
-    // Called by BucketCollector when a candy is caught
     public void NotifyCandyCaught(GameObject candy)
     {
         if (!running) return;
@@ -135,16 +144,41 @@ public class CandyCatchMiniGame : MonoBehaviour
     private void Finish()
     {
         running = false;
-
-        // Cleanup any remaining spawned objects
         foreach (var c in liveCandies) if (c) Destroy(c);
         liveCandies.Clear();
-
         if (bucketInstance) Destroy(bucketInstance);
 
         var cb = onComplete;
-        onComplete = null;
-        onProgress = null;
+        onComplete = null; onProgress = null;
         cb?.Invoke(caughtCount);
+    }
+
+    // ---- NEW: camera alignment ----
+    public void AlignToCamera()
+    {
+        var cam = camOverride != null ? camOverride : Camera.main;
+        if (cam == null || !cam.orthographic) return;
+
+        Vector3 cp = cam.transform.position;
+        float halfH = cam.orthographicSize;
+        float halfW = halfH * cam.aspect;
+
+        areaMin = new Vector2(cp.x - halfW + marginLeft,  cp.y - halfH + marginBottom);
+        areaMax = new Vector2(cp.x + halfW - marginRight, cp.y + halfH - marginTop);
+
+        // Derive spawn/bucket lanes from new bounds
+        bucketY = areaMin.y + 0.25f;
+        spawnY  = areaMax.y - 0.25f;
+        candyCleanupY = areaMin.y - 1.0f;
+    }
+
+    private void ApplySorting(GameObject go)
+    {
+        foreach (var sr in go.GetComponentsInChildren<SpriteRenderer>(true))
+        {
+            if (!string.IsNullOrEmpty(sortingLayerName))
+                sr.sortingLayerName = sortingLayerName;
+            sr.sortingOrder = sortingOrder;
+        }
     }
 }

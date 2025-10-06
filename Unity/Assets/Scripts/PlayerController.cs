@@ -118,4 +118,12 @@ public class PlayerController : MonoBehaviour
     }
 
     public void SetInteractable(IInteractable ih) => current = ih;
+    
+    // In PlayerController.cs
+    public void SetPhysicsSimulated(bool on)
+    {
+        if (rb) rb.simulated = on;                // disables ALL 2D physics on the player
+        // (Optional) also disable colliders if you have special triggers:
+        // foreach (var col in GetComponentsInChildren<Collider2D>()) col.enabled = on;
+    }
 }

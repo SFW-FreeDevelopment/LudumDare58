@@ -24,8 +24,7 @@ public class GameController : MonoBehaviour
     private GameState _state = GameState.Explore;
     private Transform _lastDoorAnchor;
     private DoorController currentDoor;
-    private MiniGameArrowsQTE activeMiniGame;
-    
+
     // --- Candy Catch Minigame refs (assign in Inspector) ---
     [Header("Candy Catch Minigame")]
     public CandyCatchMiniGame candyCatchPrefab; // prefab with the scripts below
@@ -53,17 +52,19 @@ public class GameController : MonoBehaviour
         _state = GameState.DoorPOV;
         _lastDoorAnchor = doorAnchor;
 
-        // Find the door for this house via the anchor's parent hierarchy
-        currentDoor = doorAnchor.GetComponentInParent<DoorController>();
-
+        // Option A: explicit anchor reference
         var anchorRef = doorAnchor.GetComponent<DoorPOVAnchor>();
         currentDoor = anchorRef ? anchorRef.door : null;
-        
+
         // Hide approach UI to avoid overlap
         if (ui) ui.ShowApproachPrompt(false, null);
 
         // Freeze player & stop follow camera
-        if (player) player.EnableControl(false);
+        if (player)
+        {
+            player.EnableControl(false);
+            player.SetPhysicsSimulated(false);   // ⬅️ QUICK PATCH: prevent candy from pushing player
+        }
         if (followCameraScript) followCameraScript.enabled = false;
 
         // Smooth move + zoom into POV
@@ -88,11 +89,11 @@ public class GameController : MonoBehaviour
         // Reset the door visuals/state when leaving POV (optional)
         if (currentDoor != null)
         {
-            currentDoor.ResetDoor();  // <- closes + unlights
-            currentDoor = null;       // <- avoid stale refs next time
+            currentDoor.ResetDoor();  // closes & hides glow/silhouette
+            currentDoor = null;       // avoid stale refs next time
         }
 
-        // Return camera to player & restore control
+        // Return camera to player & restore control/physics
         StopAllCoroutines();
         Vector3 toPos = new Vector3(player.transform.position.x, player.transform.position.y, cameraRig.position.z);
 
@@ -102,7 +103,11 @@ public class GameController : MonoBehaviour
             after: () =>
             {
                 if (followCameraScript) followCameraScript.enabled = true;
-                if (player) player.EnableControl(true);
+                if (player)
+                {
+                    player.SetPhysicsSimulated(true); // ⬅️ re-enable physics
+                    player.EnableControl(true);
+                }
                 _state = GameState.Explore;
             }));
     }
@@ -121,79 +126,77 @@ public class GameController : MonoBehaviour
         ui.PlayKnockFeedback();
         currentDoor.KnockAndOpen();
     }
-    
+
     private void HandleDoorOpened()
     {
         // Stop listening after one open
         if (currentDoor != null) currentDoor.OnDoorOpened -= HandleDoorOpened;
         StartMiniGame();
     }
-    
-private void StartMiniGame()
-{
-    // hide the POV buttons and show the mini-game panel
-    ui.ShowDoorPOVButtons(false);
-    ui.ShowMiniGame(true, "Get ready…", null);
 
-    // Create Arrow QTE runner on the UI (or any manager object)
-    activeQTE = ui.gameObject.AddComponent<MiniGameArrowsQTE>();
-    activeQTE.Run(3,
-        onTextChanged: txt => ui.SetMiniGameInstruction(txt),
-        onComplete: success =>
-        {
-            if (activeQTE) Destroy(activeQTE);
-            activeQTE = null;
-
-            if (success)
-            {
-                // Decide how many candies to spawn (but don't award yet)
-                int toSpawn = Random.Range(minCandyToSpawn, maxCandyToSpawn + 1);
-                StartCandyCatch(toSpawn);
-            }
-            else
-            {
-                // You could allow retry; for now, just leave the door open.
-                ui.SetMiniGameInstruction("Try again?");
-                ui.ShowDoorPOVButtons(true);
-            }
-        });
-}
-
-private void StartCandyCatch(int toSpawn)
-{
-    if (!candyCatchPrefab)
+    private void StartMiniGame()
     {
-        Debug.LogWarning("[GameController] No CandyCatchMiniGame prefab assigned.");
-        ui.SetMiniGameInstruction("Missing candy mini-game prefab!");
-        ui.ShowDoorPOVButtons(true);
-        return;
+        // hide the POV buttons and show the mini-game panel
+        ui.ShowDoorPOVButtons(false);
+        ui.ShowMiniGame(true, "Get ready…", null);
+
+        // Arrow QTE
+        activeQTE = ui.gameObject.AddComponent<MiniGameArrowsQTE>();
+        activeQTE.Run(3,
+            onTextChanged: txt => ui.SetMiniGameInstruction(txt),
+            onComplete: success =>
+            {
+                if (activeQTE) Destroy(activeQTE);
+                activeQTE = null;
+
+                if (success)
+                {
+                    int toSpawn = Random.Range(minCandyToSpawn, maxCandyToSpawn + 1);
+                    StartCandyCatch(toSpawn);
+                }
+                else
+                {
+                    ui.SetMiniGameInstruction("Try again?");
+                    ui.ShowDoorPOVButtons(true);
+                }
+            });
     }
 
-    // Spawn the candy catch minigame under the UI (keeps it frontmost)
-    activeCandyCatch = Instantiate(candyCatchPrefab, ui.transform);
-    ui.SetMiniGameInstruction($"Catch the candy! (0/{toSpawn})");
-
-    activeCandyCatch.Run(
-        candiesToSpawn: toSpawn,
-        onProgress: caught => ui.SetMiniGameInstruction($"Catch the candy! ({caught}/{toSpawn})"),
-        onComplete: caught =>
+    private void StartCandyCatch(int toSpawn)
+    {
+        if (!candyCatchPrefab)
         {
-            // Clean up the mini-game instance
-            if (activeCandyCatch) Destroy(activeCandyCatch.gameObject);
-            activeCandyCatch = null;
+            Debug.LogWarning("[GameController] No CandyCatchMiniGame prefab assigned.");
+            ui.SetMiniGameInstruction("Missing candy mini-game prefab!");
+            ui.ShowDoorPOVButtons(true);
+            return;
+        }
 
-            // Award only what they caught
-            if (caught > 0)
+        // WORLD-SPACE instantiate (no UI parent)
+        activeCandyCatch = Instantiate(candyCatchPrefab);
+        activeCandyCatch.camOverride = mainCamera; // use POV camera
+        activeCandyCatch.autoAlignToCamera = true;
+
+        ui.SetMiniGameInstruction($"Catch the candy! (0/{toSpawn})");
+
+        activeCandyCatch.Run(
+            candiesToSpawn: toSpawn,
+            onProgress: caught => ui.SetMiniGameInstruction($"Catch the candy! ({caught}/{toSpawn})"),
+            onComplete: caught =>
             {
-                if (GameManager.I != null) GameManager.I.AddCandy(caught);
-                else Debug.Log($"[CandyCatch] Would have added {caught} candy.");
-            }
+                if (activeCandyCatch) Destroy(activeCandyCatch.gameObject);
+                activeCandyCatch = null;
 
-            // Finish up this door interaction
-            ui.ShowMiniGame(false, "", null);
-            ExitDoorPOV();
-        });
-}
+                if (caught > 0)
+                {
+                    if (GameManager.I != null) GameManager.I.AddCandy(caught);
+                    else Debug.Log($"[CandyCatch] Would have added {caught} candy.");
+                }
+
+                ui.ShowMiniGame(false, "", null);
+                ExitDoorPOV();
+            });
+    }
 
     // ========= HELPERS =========
 

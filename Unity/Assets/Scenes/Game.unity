@@ -3865,7 +3865,7 @@ MonoBehaviour:
   povOrthoSize: 3.2
   povOffset: {x: 0, y: 0, z: -10}
   candyCatchPrefab: {fileID: 3663104126485781127, guid: 7e86ca9b5a1df004eb9e87fc24b8691a, type: 3}
-  minCandyToSpawn: 1
+  minCandyToSpawn: 3
   maxCandyToSpawn: 10
 --- !u!114 &1215410534
 MonoBehaviour:

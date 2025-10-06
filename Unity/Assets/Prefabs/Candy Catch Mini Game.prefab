@@ -26,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 2385176473023681911}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -960, y: -541.96, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1000, y: 1000, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -72,7 +72,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 1217570607
   m_SortingLayer: 1
-  m_SortingOrder: 100
+  m_SortingOrder: 80
   m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
   m_Color: {r: 0.04033287, g: 0.010106376, b: 0.044025064, a: 0.96862745}
   m_FlipX: 0
@@ -134,10 +134,18 @@ MonoBehaviour:
   - {fileID: 2479148846416874030, guid: 99f48474110e4c4479491d09aa4816ff, type: 3}
   - {fileID: 3777696574898498467, guid: 4fa42565d7e7e624ca49629649aaa8e1, type: 3}
   - {fileID: 1471729225494276350, guid: 3f895edbc4f729c41ba13a68cc6768e9, type: 3}
+  autoAlignToCamera: 1
+  camOverride: {fileID: 0}
+  marginLeft: 0.5
+  marginRight: 0.5
+  marginTop: 0.8
+  marginBottom: 1
   areaMin: {x: -4, y: -3.5}
   areaMax: {x: 4, y: 3.5}
-  bucketY: -4.5
+  bucketY: -6
   bucketMoveSpeed: 10
-  spawnY: 4.5
+  spawnY: 10
   spawnInterval: 0.5
-  candyCleanupY: -7
+  candyCleanupY: -10
+  sortingLayerName: SpritesAboveUI
+  sortingOrder: 100
