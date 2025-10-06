@@ -136,15 +136,15 @@ MonoBehaviour:
   - {fileID: 1471729225494276350, guid: 3f895edbc4f729c41ba13a68cc6768e9, type: 3}
   autoAlignToCamera: 1
   camOverride: {fileID: 0}
-  marginLeft: 0.5
-  marginRight: 0.5
-  marginTop: 0.8
+  marginLeft: 0.75
+  marginRight: 0.75
+  marginTop: 1
   marginBottom: 1
-  areaMin: {x: -4, y: -3.5}
-  areaMax: {x: 4, y: 3.5}
+  areaMin: {x: -1, y: -3.5}
+  areaMax: {x: 1, y: 3.5}
   bucketY: -6
   bucketMoveSpeed: 10
-  spawnY: 10
+  spawnY: 12
   spawnInterval: 0.5
   candyCleanupY: -10
   sortingLayerName: SpritesAboveUI

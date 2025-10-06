@@ -1,5 +1,4 @@
-﻿// CandyCatchMiniGame.cs
-using UnityEngine;
+﻿using UnityEngine;
 using System;
 using System.Collections.Generic;
 
@@ -33,6 +32,19 @@ public class CandyCatchMiniGame : MonoBehaviour
     public string sortingLayerName = "UI";   // make sure this exists, or use "Default"
     public int sortingOrder = 500;
 
+    // NEW: style the fall
+    [Header("Candy Fall Style")]
+    [Tooltip("Random initial rotation in degrees (e.g., -25..25).")]
+    public Vector2 spawnAngleDeg = new Vector2(-25f, 25f);
+    [Tooltip("Random angular velocity in deg/sec (e.g., -180..180).")]
+    public Vector2 spinDegPerSec = new Vector2(-180f, 180f);
+    [Tooltip("Small horizontal push so candies drift left/right a bit.")]
+    public Vector2 lateralImpulse = new Vector2(-1.5f, 1.5f);
+    [Tooltip("Downward impulse added on spawn (optional). Set 0 for none).")]
+    public float downwardImpulse = 0.0f;
+    [Tooltip("Gravity scale for candies (1 = default).")]
+    public float candyGravityScale = 0.8f;
+
     private int targetCount;
     private int caughtCount;
     private int spawned;
@@ -59,7 +71,7 @@ public class CandyCatchMiniGame : MonoBehaviour
         // Create bucket
         bucketInstance = Instantiate(bucketPrefab);
         bucketInstance.transform.position = new Vector3(
-            Mathf.Clamp(0f, areaMin.x, areaMax.x), // center-ish; you can start at player x if you want
+            Mathf.Clamp(0f, areaMin.x, areaMax.x), // center-ish
             bucketY,
             0f
         );
@@ -117,14 +129,29 @@ public class CandyCatchMiniGame : MonoBehaviour
         float x = UnityEngine.Random.Range(areaMin.x, areaMax.x);
         Vector3 pos = new Vector3(x, spawnY, 0f);
 
-        var go = Instantiate(prefab, pos, Quaternion.identity);
+        // Random initial rotation
+        float zRot = UnityEngine.Random.Range(spawnAngleDeg.x, spawnAngleDeg.y);
+        var go = Instantiate(prefab, pos, Quaternion.Euler(0f, 0f, zRot));
         liveCandies.Add(go);
 
         if (!go.GetComponent<CandyMarker>()) go.AddComponent<CandyMarker>();
-        var rb = go.GetComponent<Rigidbody2D>(); if (!rb) rb = go.AddComponent<Rigidbody2D>();
+
+        // Rigidbody setup
+        var rb = go.GetComponent<Rigidbody2D>(); 
+        if (!rb) rb = go.AddComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Dynamic;
-        rb.gravityScale = 0.5f;
+        rb.gravityScale = candyGravityScale;
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        rb.interpolation = RigidbodyInterpolation2D.Interpolate; // smoother falling/rotation
+
+        // Apply spin (deg/sec) converted to rad/sec under the hood by Unity automatically
+        rb.angularVelocity = UnityEngine.Random.Range(spinDegPerSec.x, spinDegPerSec.y);
+
+        // Give a little sideways push and optional downward kick
+        float lateral = UnityEngine.Random.Range(lateralImpulse.x, lateralImpulse.y);
+        Vector2 impulse = new Vector2(lateral, -Mathf.Abs(downwardImpulse));
+        if (impulse.sqrMagnitude > 0f)
+            rb.AddForce(impulse, ForceMode2D.Impulse);
 
         ApplySorting(go);
     }
@@ -154,7 +181,7 @@ public class CandyCatchMiniGame : MonoBehaviour
         cb?.Invoke(caughtCount);
     }
 
-    // ---- NEW: camera alignment ----
+    // ---- Camera alignment ----
     public void AlignToCamera()
     {
         var cam = camOverride != null ? camOverride : Camera.main;
