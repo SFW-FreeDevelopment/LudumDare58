@@ -206,6 +206,9 @@ public class GameController : MonoBehaviour
                 {
                     if (GameManager.I != null) GameManager.I.AddCandy(caught);
                     else Debug.Log($"[CandyCatch] Would have added {caught} candy.");
+
+                    // start house cooldown (turn light off)
+                    if (currentDoor) currentDoor.NotifyCandyTaken();
                 }
 
                 ui.ShowMiniGame(false, "", null);

@@ -3,36 +3,82 @@
 [RequireComponent(typeof(Collider2D))]
 public class HouseTrigger2D : MonoBehaviour, IInteractable
 {
-    [Tooltip("Where the POV camera should go (child on the house front).")]
-    public Transform doorPOVAnchor;
+    public Transform doorPOVAnchor;             // the anchor at the door
+    public DoorController door;                 // assign door (has HouseCandyAvailability)
+    public UIHud ui;                            // assign (or find UIHud.I)
 
-    bool playerInside;
+    private bool playerInside;
+    private PlayerController currentPlayer;
 
-    void Reset() { GetComponent<Collider2D>().isTrigger = true; }
+    void Awake()
+    {
+        if (!ui) ui = UIHud.I;
+        if (!door && doorPOVAnchor) door = doorPOVAnchor.GetComponentInParent<DoorController>();
+        if (door && door.house)
+            door.house.OnAvailabilityChanged += HandleAvailabilityChanged;
+    }
+
+    void OnDestroy()
+    {
+        if (door && door.house)
+            door.house.OnAvailabilityChanged -= HandleAvailabilityChanged;
+    }
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (!other.CompareTag("Player")) return;
-        playerInside = true;
         var pc = other.GetComponent<PlayerController>();
-        pc?.SetInteractable(this);
-        GameController.I.ui.ShowApproachPrompt(true, () => Interact(pc));
+        if (!pc) return;
+
+        playerInside = true;
+        currentPlayer = pc;
+        pc.SetInteractable(this);
+
+        RefreshApproachUI();
     }
 
     void OnTriggerExit2D(Collider2D other)
     {
-        if (!other.CompareTag("Player")) return;
-        playerInside = false;
         var pc = other.GetComponent<PlayerController>();
-        pc?.SetInteractable(null);
-        GameController.I.ui.ShowApproachPrompt(false, null);
+        if (!pc || pc != currentPlayer) return;
+
+        playerInside = false;
+        if (ui) ui.ShowApproachPrompt(false, null);
+        pc.SetInteractable(null);
+        currentPlayer = null;
     }
 
-    public void Interact(PlayerController player)
+    void HandleAvailabilityChanged(bool isAvailable)
     {
         if (!playerInside) return;
-        if (doorPOVAnchor == null) { Debug.LogWarning("No doorPOVAnchor set."); return; }
-        GameController.I.ui.ShowApproachPrompt(false, null);
-        GameController.I.EnterDoorPOV(doorPOVAnchor);
+        RefreshApproachUI();
+    }
+
+    void RefreshApproachUI()
+    {
+        bool available = door && door.house && door.house.IsAvailable;
+        if (!ui) ui = UIHud.I;
+
+        if (available)
+        {
+            ui.ShowApproachPrompt(true, () =>
+            {
+                // guard: if it flips off in the split second before click
+                if (door && door.house && door.house.IsAvailable)
+                    GameController.I.EnterDoorPOV(doorPOVAnchor);
+                else
+                    ui.ShowApproachPrompt(false, null);
+            });
+        }
+        else
+        {
+            ui.ShowApproachPrompt(false, null);
+        }
+    }
+
+    // IInteractable
+    public void Interact(PlayerController player)
+    {
+        if (door && door.house && door.house.IsAvailable)
+            GameController.I.EnterDoorPOV(doorPOVAnchor);
     }
 }

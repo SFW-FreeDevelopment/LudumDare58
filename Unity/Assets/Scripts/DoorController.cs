@@ -5,6 +5,8 @@ public class DoorController : MonoBehaviour
 {
     public System.Action OnDoorOpened;
 
+    [SerializeField] public HouseCandyAvailability house; // auto-found in Awake if null
+    
     [Header("Renderers")]
     [SerializeField] private SpriteRenderer doorRenderer;     // main door sprite
     [SerializeField] private SpriteRenderer glowRenderer;     // background glow (behind the door)
@@ -38,11 +40,17 @@ public class DoorController : MonoBehaviour
     {
         audioSource = GetComponent<AudioSource>();
         if (!doorRenderer) doorRenderer = GetComponent<SpriteRenderer>();
-
-        // Initial visual state: closed door, no glow, no silhouette
         if (doorRenderer && closedDoorSprite) doorRenderer.sprite = closedDoorSprite;
-        if (glowRenderer)        glowRenderer.enabled = false;
-        if (silhouetteRenderer)  silhouetteRenderer.enabled = false;
+        if (glowRenderer) glowRenderer.enabled = false;
+        if (silhouetteRenderer) silhouetteRenderer.enabled = false;
+
+        if (!house) house = GetComponentInParent<HouseCandyAvailability>(); // auto hook
+    }
+
+    // Call this from GameController when candy is actually awarded (>0 caught)
+    public void NotifyCandyTaken()
+    {
+        if (house) house.ConsumeAndStartCooldown();
     }
 
     public void KnockAndOpen()
