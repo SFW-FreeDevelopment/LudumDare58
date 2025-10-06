@@ -30,6 +30,11 @@ public class GameController : MonoBehaviour
     public CandyCatchMiniGame candyCatchPrefab; // prefab with the scripts below
     public int minCandyToSpawn = 1;
     public int maxCandyToSpawn = 10;
+    
+    [Header("Player Y Offsets")]
+    public float explorePlayerY = -3.18f;  // default Y while exploring
+    public float doorPOVPlayerY = -2.27f;  // Y while at the door
+    float savedPlayerY;                    // in case you ever vary it
 
     private MiniGameArrowsQTE activeQTE;
     private CandyCatchMiniGame activeCandyCatch;
@@ -59,12 +64,15 @@ public class GameController : MonoBehaviour
         // Hide approach UI to avoid overlap
         if (ui) ui.ShowApproachPrompt(false, null);
 
-        // Freeze player & stop follow camera
         if (player)
         {
+            savedPlayerY = player.transform.position.y; // keep whatever it was (usually -3.18)
+            var p = player.transform.position;
+            p.y = doorPOVPlayerY;                       // -2.27
+            player.transform.position = p;
             player.ShowBackFacing(true);
             player.EnableControl(false);
-            player.SetPhysicsSimulated(false);   // ⬅️ QUICK PATCH: prevent candy from pushing player
+            player.SetPhysicsSimulated(false);
         }
         if (followCameraScript) followCameraScript.enabled = false;
 
@@ -100,6 +108,13 @@ public class GameController : MonoBehaviour
 
         StopAllCoroutines();
 
+        if (player)
+        {
+            var p = player.transform.position;
+            p.y = explorePlayerY;        // back to -3.18
+            player.transform.position = p;
+        }
+        
         // Compute the final explore position to avoid "dip then correct"
         Vector3 toPos = ComputeExploreTargetForSize(exploreOrthoSize);
 
@@ -329,4 +344,5 @@ public class GameController : MonoBehaviour
         // Avoid stray UI/QTE lingering if this gets disabled unexpectedly
         CleanupDoorInteractions();
     }
+    
 }
