@@ -36,6 +36,7 @@ public class UIHud : MonoBehaviour
     System.Action onApproachClick;
     System.Action onKnock;
     System.Action onWalkAway;
+    bool povHotkeysEnabled = true;
 
     void Awake()
     {
@@ -64,7 +65,7 @@ public class UIHud : MonoBehaviour
     void Update()
     {
         // Keyboard shortcuts while in POV
-        if (doorPovRoot && doorPovRoot.activeSelf)
+        if (doorPovRoot && doorPovRoot.activeSelf && povHotkeysEnabled)
         {
             if (Input.GetKeyDown(KeyCode.Space))  onKnock?.Invoke();
             if (Input.GetKeyDown(KeyCode.Escape)) onWalkAway?.Invoke();
@@ -169,5 +170,13 @@ public class UIHud : MonoBehaviour
         if (!text) yield break;
         text.alpha = 0.5f; yield return new WaitForSeconds(fade);
         text.alpha = 1f;   yield return new WaitForSeconds(hold);
+    }
+    
+    public void SetPOVHotkeysEnabled(bool enabled)
+    {
+        povHotkeysEnabled = enabled;
+        // Optional: also gray out buttons instead of hiding
+        if (knockButton)    knockButton.interactable = enabled;
+        if (walkAwayButton) walkAwayButton.interactable = enabled;
     }
 }

@@ -74,8 +74,12 @@ public class GameController : MonoBehaviour
             toSize: povOrthoSize,
             after: () =>
             {
-                // Show POV UI with wired actions
-                if (ui) ui.ShowDoorPOVUI(true, onKnock: Knock, onWalkAway: ExitDoorPOV);
+                if (ui)
+                {
+                    ui.ShowDoorPOVUI(true, onKnock: Knock, onWalkAway: ExitDoorPOV);
+                    ui.ShowDoorPOVButtons(true);      // ✅ make visible again
+                    ui.SetPOVHotkeysEnabled(true);    // ✅ restore Space/Esc
+                }
             }));
     }
 
@@ -83,33 +87,40 @@ public class GameController : MonoBehaviour
     {
         if (_state != GameState.DoorPOV) return;
 
-        // Hide POV UI
-        if (ui) ui.ShowDoorPOVUI(false, null, null);
+        // Clean up everything related to door/minigames/UI
+        CleanupDoorInteractions();
 
-        // Reset the door visuals/state when leaving POV (optional)
+        // Reset the door visuals/state when leaving POV
         if (currentDoor != null)
         {
-            currentDoor.ResetDoor();  // closes & hides glow/silhouette
-            currentDoor = null;       // avoid stale refs next time
+            currentDoor.ResetDoor();
+            currentDoor = null;
         }
 
-        // Return camera to player & restore control/physics
         StopAllCoroutines();
-        Vector3 toPos = new Vector3(player.transform.position.x, player.transform.position.y, cameraRig.position.z);
+
+        // Compute the final explore position to avoid "dip then correct"
+        Vector3 toPos = ComputeExploreTargetForSize(exploreOrthoSize);
 
         StartCoroutine(Co_MoveCamAndZoom(
-            toPos: toPos,
-            toSize: exploreOrthoSize,
-            after: () =>
+        toPos: toPos,
+        toSize: exploreOrthoSize,
+        after: () =>
+        {
+            if (followCameraScript) followCameraScript.enabled = true;
+            if (player)
             {
-                if (followCameraScript) followCameraScript.enabled = true;
-                if (player)
-                {
-                    player.SetPhysicsSimulated(true); // ⬅️ re-enable physics
-                    player.EnableControl(true);
-                }
-                _state = GameState.Explore;
-            }));
+                player.SetPhysicsSimulated(true);
+                player.EnableControl(true);
+            }
+            if (ui)
+            {
+                // ensure next house starts fresh
+                ui.SetPOVHotkeysEnabled(true);
+                ui.ShowDoorPOVButtons(false); // hidden outside POV anyway
+            }
+            _state = GameState.Explore;
+        }));
     }
 
     // ========= ACTIONS =========
@@ -118,6 +129,10 @@ public class GameController : MonoBehaviour
     {
         if (_state != GameState.DoorPOV) return;
         if (currentDoor == null) { Debug.LogWarning("[GameController] No DoorController."); return; }
+
+        // ⬇️ Immediately prevent double input during the opening delay
+        ui.ShowDoorPOVButtons(false);       // hide the buttons right away
+        ui.SetPOVHotkeysEnabled(false);     // stop Space/Esc from triggering again
 
         // Prevent double-subscribe
         currentDoor.OnDoorOpened -= HandleDoorOpened;
@@ -232,4 +247,81 @@ public class GameController : MonoBehaviour
 
         after?.Invoke();
     }
+    
+    // Returns the position the follow camera would use for a given ortho size.
+    private Vector3 ComputeExploreTargetForSize(float orthoSize)
+    {
+        var z = cameraRig.position.z;
+
+        // Get follow settings if the component matches our example
+        Vector2 camOffset = Vector2.zero;
+        bool clamp = false;
+        Vector2 minB = Vector2.zero, maxB = Vector2.zero;
+
+        var camFollow = followCameraScript as CameraFollow2D; // your earlier script
+        if (camFollow != null)
+        {
+            camOffset = camFollow.offset;
+            clamp = camFollow.useBounds;
+            minB = camFollow.minBounds;
+            maxB = camFollow.maxBounds;
+        }
+
+        // Desired pos with offset
+        Vector3 pos = new Vector3(
+        player.transform.position.x + camOffset.x,
+        player.transform.position.y + camOffset.y,
+        z
+        );
+
+        // Clamp using the *final* camera size so there's no post-pop correction
+        if (clamp && mainCamera != null)
+        {
+            float halfH = orthoSize;
+            float halfW = halfH * mainCamera.aspect;
+            pos.x = Mathf.Clamp(pos.x, minB.x + halfW, maxB.x - halfW);
+            pos.y = Mathf.Clamp(pos.y, minB.y + halfH, maxB.y - halfH);
+        }
+
+        return pos;
+    }
+
+    // Add inside GameController
+    private void CleanupDoorInteractions()
+    {
+        // Stop listening to this door
+        if (currentDoor != null)
+            currentDoor.OnDoorOpened -= HandleDoorOpened;
+
+        // Kill the Arrow QTE runner (it owns the "Press LEFT, UP..." text updates)
+        if (activeQTE)
+        {
+            Destroy(activeQTE);
+            activeQTE = null;
+        }
+
+        // Kill the Candy Catch minigame if it exists
+        if (activeCandyCatch)
+        {
+            Destroy(activeCandyCatch.gameObject);
+            activeCandyCatch = null;
+        }
+
+        // Hide all door UI panels/text
+        if (ui)
+        {
+            ui.ShowMiniGame(false, "", null);
+            ui.ShowDoorPOVButtons(false);
+            ui.ShowDoorPOVUI(false, null, null);
+            // Also ensure the Approach prompt is hidden while leaving POV
+            ui.ShowApproachPrompt(false, null);
+        }
+    }
+    
+    void OnDisable()
+    {
+        // Avoid stray UI/QTE lingering if this gets disabled unexpectedly
+        CleanupDoorInteractions();
+    }
+
 }

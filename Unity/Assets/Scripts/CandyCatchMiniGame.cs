@@ -69,6 +69,7 @@ public class CandyCatchMiniGame : MonoBehaviour
             bucketCtrl.speed = bucketMoveSpeed;
             bucketCtrl.boundsMin = new Vector2(areaMin.x, bucketY);
             bucketCtrl.boundsMax = new Vector2(areaMax.x, bucketY);
+            bucketCtrl.CenterBucket();
         }
         var collector = bucketInstance.GetComponentInChildren<BucketCollector>(includeInactive: true);
         if (collector) collector.Init(this);

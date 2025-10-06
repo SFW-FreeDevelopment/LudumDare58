@@ -20,4 +20,13 @@ public class BucketController : MonoBehaviour
         pos.y = boundsMin.y; 
         transform.position = pos;
     }
+
+    public void CenterBucket()
+    {
+        // Safely position bucket to middle X between its min and max bounds
+        float midX = (boundsMin.x + boundsMax.x) * 0.5f;
+        Vector3 pos = transform.position;
+        pos.x = midX;
+        transform.position = pos;
+    }
 }

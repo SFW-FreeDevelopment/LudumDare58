@@ -64,8 +64,12 @@ public class MiniGameArrowsQTE : MonoBehaviour
         sequence.Clear();
         for (int i = 0; i < length; i++)
         {
+            continue;
             sequence.Add(pool[UnityEngine.Random.Range(0, pool.Length)]);
         }
+        sequence.Add(pool[0]);
+        sequence.Add(pool[1]);
+        sequence.Add(pool[2]);
     }
 
     private void UpdateInstruction()
