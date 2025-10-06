@@ -25,6 +25,15 @@ public class GameController : MonoBehaviour
     private Transform _lastDoorAnchor;
     private DoorController currentDoor;
     private MiniGameArrowsQTE activeMiniGame;
+    
+    // --- Candy Catch Minigame refs (assign in Inspector) ---
+    [Header("Candy Catch Minigame")]
+    public CandyCatchMiniGame candyCatchPrefab; // prefab with the scripts below
+    public int minCandyToSpawn = 1;
+    public int maxCandyToSpawn = 10;
+
+    private MiniGameArrowsQTE activeQTE;
+    private CandyCatchMiniGame activeCandyCatch;
 
     void Awake()
     {
@@ -120,45 +129,71 @@ public class GameController : MonoBehaviour
         StartMiniGame();
     }
     
-    private void StartMiniGame()
-    {
-        // Hide the POV buttons (Knock/Walk Away) and show mini-game panel
-        ui.ShowDoorPOVButtons(false);
-        ui.ShowMiniGame(true, "…", null); // text will be set by the minigame
+private void StartMiniGame()
+{
+    // hide the POV buttons and show the mini-game panel
+    ui.ShowDoorPOVButtons(false);
+    ui.ShowMiniGame(true, "Get ready…", null);
 
-        // Create a simple QTE runner under the UI (or any manager object)
-        // You can also add this component to a prefab if you prefer.
-        activeMiniGame = ui.gameObject.AddComponent<MiniGameArrowsQTE>();
-        activeMiniGame.Run(3, // sequence length
+    // Create Arrow QTE runner on the UI (or any manager object)
+    activeQTE = ui.gameObject.AddComponent<MiniGameArrowsQTE>();
+    activeQTE.Run(3,
         onTextChanged: txt => ui.SetMiniGameInstruction(txt),
         onComplete: success =>
         {
-            // Clean up runner
-            if (activeMiniGame) Destroy(activeMiniGame);
-            activeMiniGame = null;
-
-            ui.ShowMiniGame(false, "", null);
-            ui.ShowDoorPOVButtons(true); // bring buttons back if you want
+            if (activeQTE) Destroy(activeQTE);
+            activeQTE = null;
 
             if (success)
             {
-                int reward = Random.Range(1, 11); // 1..10 inclusive
-                Debug.Log($"[MiniGame] Success! Candy +{reward}");
-
-                // Award candy using your existing GameManager if present
-                if (GameManager.I != null) GameManager.I.AddCandy(reward);
-                else Debug.Log($"[GameController] (No GameManager) Would have added {reward} candy.");
-
-                // Optional: auto-exit POV on success
-                ExitDoorPOV();
+                // Decide how many candies to spawn (but don't award yet)
+                int toSpawn = Random.Range(minCandyToSpawn, maxCandyToSpawn + 1);
+                StartCandyCatch(toSpawn);
             }
             else
             {
-                Debug.Log("[MiniGame] Failed.");
-                // You could allow retry, keep POV open, etc.
+                // You could allow retry; for now, just leave the door open.
+                ui.SetMiniGameInstruction("Try again?");
+                ui.ShowDoorPOVButtons(true);
             }
         });
+}
+
+private void StartCandyCatch(int toSpawn)
+{
+    if (!candyCatchPrefab)
+    {
+        Debug.LogWarning("[GameController] No CandyCatchMiniGame prefab assigned.");
+        ui.SetMiniGameInstruction("Missing candy mini-game prefab!");
+        ui.ShowDoorPOVButtons(true);
+        return;
     }
+
+    // Spawn the candy catch minigame under the UI (keeps it frontmost)
+    activeCandyCatch = Instantiate(candyCatchPrefab, ui.transform);
+    ui.SetMiniGameInstruction($"Catch the candy! (0/{toSpawn})");
+
+    activeCandyCatch.Run(
+        candiesToSpawn: toSpawn,
+        onProgress: caught => ui.SetMiniGameInstruction($"Catch the candy! ({caught}/{toSpawn})"),
+        onComplete: caught =>
+        {
+            // Clean up the mini-game instance
+            if (activeCandyCatch) Destroy(activeCandyCatch.gameObject);
+            activeCandyCatch = null;
+
+            // Award only what they caught
+            if (caught > 0)
+            {
+                if (GameManager.I != null) GameManager.I.AddCandy(caught);
+                else Debug.Log($"[CandyCatch] Would have added {caught} candy.");
+            }
+
+            // Finish up this door interaction
+            ui.ShowMiniGame(false, "", null);
+            ExitDoorPOV();
+        });
+}
 
     // ========= HELPERS =========
 

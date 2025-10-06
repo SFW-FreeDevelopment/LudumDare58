@@ -4,46 +4,45 @@ using System.Collections;
 public class DoorController : MonoBehaviour
 {
     public System.Action OnDoorOpened;
-    
-    [Header("Linked Components")]
-    public DoorGlowController glow;            // optional helper for fading glow
-    [SerializeField] SpriteRenderer doorRenderer;      // main door sprite
-    [SerializeField] SpriteRenderer entrywayRenderer;  // background behind door
 
-    [Header("Sprites")]
+    [Header("Renderers")]
+    [SerializeField] private SpriteRenderer doorRenderer;     // main door sprite
+    [SerializeField] private SpriteRenderer glowRenderer;     // background glow (behind the door)
+    [SerializeField] private SpriteRenderer silhouetteRenderer; // silhouette (in front of the glow)
+
+    [Header("Door Sprites")]
     public Sprite closedDoorSprite;
     public Sprite openDoorSprite;
 
-    [Header("Colors")]
-    [Tooltip("Dark unlit entryway color (#42321E).")]
-    public Color unlitColor = new Color32(0x42, 0x32, 0x1E, 255);
-    [Tooltip("Warm lit entryway color (#FFD46B).")]
-    public Color litColor = new Color32(0xFF, 0xD4, 0x6B, 255);
-    public float glowFadeTime = 0.35f;
+    [Header("Silhouette Sprites")]
+    public Sprite silhouetteManSprite;
+    public Sprite silhouetteWomanSprite;
 
-    [Header("Animation Settings")]
-    public float knockDelay = 0.2f;   // delay between knock sounds
-    public int knockCount = 2;        // how many times to knock
-    public float openDelay = 0.6f;    // wait after last knock before opening
+    [Header("Knock/Open Timing")]
+    [Tooltip("Delay between knock sounds.")]
+    public float knockDelay = 0.2f;
+    [Tooltip("Number of knocks before opening.")]
+    public int knockCount = 2;
+    [Tooltip("Pause after last knock before door opens.")]
+    public float openDelay = 0.6f;
 
     [Header("Audio")]
     public AudioClip knockSfx;
     public AudioClip openSfx;
 
-    AudioSource audioSource;
-    bool isOpen = false;
-    bool opening = false;
+    private AudioSource audioSource;
+    private bool isOpen = false;
+    private bool opening = false;
 
     void Awake()
     {
         audioSource = GetComponent<AudioSource>();
-
-        // Initialize door + entryway
         if (!doorRenderer) doorRenderer = GetComponent<SpriteRenderer>();
-        if (doorRenderer && closedDoorSprite)
-            doorRenderer.sprite = closedDoorSprite;
-        if (entrywayRenderer)
-            entrywayRenderer.color = unlitColor;
+
+        // Initial visual state: closed door, no glow, no silhouette
+        if (doorRenderer && closedDoorSprite) doorRenderer.sprite = closedDoorSprite;
+        if (glowRenderer)        glowRenderer.enabled = false;
+        if (silhouetteRenderer)  silhouetteRenderer.enabled = false;
     }
 
     public void KnockAndOpen()
@@ -60,43 +59,42 @@ public class DoorController : MonoBehaviour
         // --- Knock sequence ---
         for (int i = 0; i < knockCount; i++)
         {
-            if (audioSource && knockSfx)
-                audioSource.PlayOneShot(knockSfx);
+            if (audioSource && knockSfx) audioSource.PlayOneShot(knockSfx);
             yield return new WaitForSeconds(knockDelay);
         }
 
+        // Anticipation before reveal
         yield return new WaitForSeconds(openDelay);
 
-        // --- Open door ---
+        // --- Open door visuals ---
         isOpen = true;
-        if (audioSource && openSfx)
-            audioSource.PlayOneShot(openSfx);
-        if (doorRenderer && openDoorSprite)
-            doorRenderer.sprite = openDoorSprite;
 
-        // Fade the entryway from dark → warm yellow
-        if (entrywayRenderer)
+        if (audioSource && openSfx) audioSource.PlayOneShot(openSfx);
+        if (doorRenderer && openDoorSprite) doorRenderer.sprite = openDoorSprite;
+
+        // Show glow behind the open door
+        if (glowRenderer) glowRenderer.enabled = true;
+
+        // Pick a random silhouette (man/woman) and show it
+        if (silhouetteRenderer)
         {
-            Color start = entrywayRenderer.color;
-            Color target = litColor;
-            float t = 0f;
+            Sprite pick = null;
 
-            while (t < glowFadeTime)
-            {
-                t += Time.deltaTime;
-                float k = Mathf.Clamp01(t / glowFadeTime);
-                entrywayRenderer.color = Color.Lerp(start, target, k);
-                yield return null;
-            }
-            entrywayRenderer.color = target;
+            // Choose randomly between provided sprites (fallbacks handled)
+            bool chooseMan = Random.value < 0.5f;
+            if (chooseMan && silhouetteManSprite) pick = silhouetteManSprite;
+            else if (!chooseMan && silhouetteWomanSprite) pick = silhouetteWomanSprite;
+
+            // Fallbacks if one/both not assigned
+            if (!pick) pick = silhouetteManSprite ? silhouetteManSprite : silhouetteWomanSprite;
+
+            silhouetteRenderer.sprite = pick;
+            silhouetteRenderer.enabled = (pick != null);
         }
-
-        // Optional: if using DoorGlowController, trigger it too
-        if (glow) glow.SetLit(true);
 
         opening = false;
         OnDoorOpened?.Invoke();
-        Debug.Log($"[DoorController] Door '{name}' opened!");
+        Debug.Log($"[DoorController] Door '{name}' opened (silhouette shown).");
     }
 
     public void ResetDoor()
@@ -105,13 +103,16 @@ public class DoorController : MonoBehaviour
         opening = false;
         StopAllCoroutines();
 
-        if (doorRenderer && closedDoorSprite)
-            doorRenderer.sprite = closedDoorSprite;
+        if (doorRenderer && closedDoorSprite) doorRenderer.sprite = closedDoorSprite;
 
-        if (entrywayRenderer)
-            entrywayRenderer.color = unlitColor;
+        if (glowRenderer) glowRenderer.enabled = false;
 
-        if (glow) glow.SetLit(false);
+        if (silhouetteRenderer)
+        {
+            silhouetteRenderer.enabled = false;
+            // Optional: clear sprite reference so it re-selects next time
+            // silhouetteRenderer.sprite = null;
+        }
     }
 
     public bool IsOpen => isOpen;

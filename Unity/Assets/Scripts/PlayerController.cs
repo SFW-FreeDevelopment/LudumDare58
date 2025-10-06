@@ -4,6 +4,8 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     public float speed = 5f;
+    [Tooltip("Extra % applied to speed and walk FPS while holding Shift.")]
+    public float runBonusPercent = 25f; // 25% faster when running
 
     [Header("Sprites (Idle + 3 Walk Frames)")]
     public Sprite idleSprite;
@@ -18,6 +20,7 @@ public class PlayerController : MonoBehaviour
 
     float x;
     bool canControl = true;
+    bool isRunning; // Shift key
 
     // Animation state
     float animTimer;
@@ -40,6 +43,7 @@ public class PlayerController : MonoBehaviour
         if (!on)
         {
             x = 0f;
+            isRunning = false;
             rb.velocity = new Vector2(0, rb.velocity.y);
             if (sr && idleSprite) sr.sprite = idleSprite; // lock to idle in POV
             animTimer = 0f;
@@ -53,6 +57,7 @@ public class PlayerController : MonoBehaviour
         if (!canControl) return;
 
         x = Input.GetAxisRaw("Horizontal");
+        isRunning = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
         // Flip facing based on movement
         if (x != 0)
@@ -64,12 +69,16 @@ public class PlayerController : MonoBehaviour
 
         // --- Sprite animation ---
         float speedX = Mathf.Abs(rb.velocity.x);
-
         if (speedX > moveThreshold)
         {
-            float speedFactor = Mathf.Clamp01(speedX / Mathf.Max(0.01f, speed));
-            float fps = Mathf.Max(1f, baseWalkFps * speedFactor);
-            float frameTime = 1f / fps;
+            // Effective multipliers when running
+            float runMul = 1f + (runBonusPercent * 0.01f);
+            float effectiveMaxSpeed = speed * (isRunning ? runMul : 1f);
+
+            // Scale FPS with movement speed, then also boost base FPS when running
+            float speedFactor = Mathf.Clamp01(speedX / Mathf.Max(0.01f, effectiveMaxSpeed));
+            float effectiveFps = Mathf.Max(1f, baseWalkFps * (isRunning ? runMul : 1f) * speedFactor);
+            float frameTime = 1f / effectiveFps;
 
             animTimer += Time.deltaTime;
             if (animTimer >= frameTime)
@@ -104,7 +113,8 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        rb.velocity = new Vector2(x * speed, rb.velocity.y); // maintain gravity on Y
+        float runMul = isRunning ? (1f + runBonusPercent * 0.01f) : 1f;
+        rb.velocity = new Vector2(x * speed * runMul, rb.velocity.y); // maintain gravity on Y
     }
 
     public void SetInteractable(IInteractable ih) => current = ih;
