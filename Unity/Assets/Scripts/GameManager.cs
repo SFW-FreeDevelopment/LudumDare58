@@ -43,6 +43,8 @@ public class GameManager : MonoBehaviour {
     {
         if (!running) return;
         running = false;
+        
+        AudioManager.I?.PlayGameOver(); 
 
         // Exit POV or minigame cleanly if needed
         if (GameController.I != null && GameController.I.State == GameState.DoorPOV)

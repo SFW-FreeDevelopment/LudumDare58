@@ -161,6 +161,8 @@ public class CandyCatchMiniGame : MonoBehaviour
         if (!running) return;
         caughtCount++;
         onProgress?.Invoke(caughtCount);
+        
+        AudioManager.I?.PlayCandy();
 
         if (candy)
         {

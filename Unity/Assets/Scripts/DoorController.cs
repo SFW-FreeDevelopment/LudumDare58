@@ -57,6 +57,7 @@ public class DoorController : MonoBehaviour
     {
         if (opening || isOpen) return;
         StopAllCoroutines();
+        AudioManager.I?.PlayKnock();
         StartCoroutine(Co_KnockAndOpen());
     }
 
@@ -101,12 +102,16 @@ public class DoorController : MonoBehaviour
         }
 
         opening = false;
+        AudioManager.I?.PlayDoorOpen();
         OnDoorOpened?.Invoke();
         Debug.Log($"[DoorController] Door '{name}' opened (silhouette shown).");
     }
 
     public void ResetDoor()
     {
+        if (isOpen)
+            AudioManager.I?.PlayDoorClose();
+        
         isOpen = false;
         opening = false;
         StopAllCoroutines();
