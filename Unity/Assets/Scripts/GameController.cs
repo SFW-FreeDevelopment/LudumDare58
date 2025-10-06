@@ -62,6 +62,7 @@ public class GameController : MonoBehaviour
         // Freeze player & stop follow camera
         if (player)
         {
+            player.ShowBackFacing(true);
             player.EnableControl(false);
             player.SetPhysicsSimulated(false);   // ⬅️ QUICK PATCH: prevent candy from pushing player
         }
@@ -112,12 +113,14 @@ public class GameController : MonoBehaviour
             {
                 player.SetPhysicsSimulated(true);
                 player.EnableControl(true);
+                player.ShowBackFacing(false); 
             }
             if (ui)
             {
                 // ensure next house starts fresh
                 ui.SetPOVHotkeysEnabled(true);
                 ui.ShowDoorPOVButtons(false); // hidden outside POV anyway
+                
             }
             _state = GameState.Explore;
         }));
@@ -326,5 +329,4 @@ public class GameController : MonoBehaviour
         // Avoid stray UI/QTE lingering if this gets disabled unexpectedly
         CleanupDoorInteractions();
     }
-
 }

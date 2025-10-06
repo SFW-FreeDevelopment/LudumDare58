@@ -2219,7 +2219,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 15
+  m_SortingOrder: 16
   m_Sprite: {fileID: 21300000, guid: 7aec68923b1916c47a3d7958a67fcf6e, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -4019,6 +4019,8 @@ MonoBehaviour:
   walkSpriteA: {fileID: 21300000, guid: d551d62e029e83a44864d1aeb45c44b4, type: 3}
   walkSpriteB: {fileID: 21300000, guid: d2c57caf475b7664ca3d449bbeaf434e, type: 3}
   walkSpriteC: {fileID: 21300000, guid: 5bdab23b362942742b723ce74449dad0, type: 3}
+  backSprite: {fileID: 21300000, guid: ebc499302e105174289dbaf8416e0f87, type: 3}
+  backPoseActive: 0
   baseWalkFps: 6
   moveThreshold: 0.05
 --- !u!212 &1196664130
