@@ -38,6 +38,7 @@ public class AudioManager : MonoBehaviour
 
     // Convenience helpers
     public void PlayCandy()  => Play(Random.value < 0.5f ? Candy1 : Candy2);
+    public void PlayCandy(bool isCrinkly)  => Play(isCrinkly ? Candy1 : Candy2);
     public void PlayClick()  => Play(Click);
     public void PlayDoorOpen() => Play(DoorOpen);
     public void PlayDoorClose() => Play(DoorClose);

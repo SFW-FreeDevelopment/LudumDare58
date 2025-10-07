@@ -11,8 +11,9 @@ public class BucketCollector : MonoBehaviour
         if (!owner) return;
 
         // Recognize candies by marker (preferred) or tag
-        if (other && (other.GetComponent<CandyMarker>() || other.CompareTag("Candy")))
+        if (other && other.CompareTag("Candy"))
         {
+            AudioManager.I?.PlayCandy(other.GetComponent<CandyMarker>().IsCrinkly);
             owner.NotifyCandyCaught(other.gameObject);
         }
     }
