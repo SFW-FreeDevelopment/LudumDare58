@@ -143,9 +143,17 @@ MonoBehaviour:
   areaMin: {x: -1, y: -3.5}
   areaMax: {x: 1, y: 3.5}
   bucketY: -6
-  bucketMoveSpeed: 10
+  bucketMoveSpeed: 12
   spawnY: 12
-  spawnInterval: 0.5
+  spawnInterval: 0.375
   candyCleanupY: -10
   sortingLayerName: SpritesAboveUI
   sortingOrder: 100
+  spawnAngleDeg: {x: -25, y: 25}
+  spinDegPerSec: {x: -180, y: 180}
+  lateralImpulse: {x: -1.5, y: 1.5}
+  downwardImpulse: 0
+  candyGravityScale: 0.8
+  afterLastSpawnTimeout: 8
+  killOffscreenCandies: 1
+  offscreenMargin: 2
