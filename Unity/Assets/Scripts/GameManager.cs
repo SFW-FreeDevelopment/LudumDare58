@@ -61,6 +61,7 @@ public class GameManager : MonoBehaviour {
         // Show results window
         if (resultsWindow != null)
         {
+            resultsWindow.Setup();
             resultsWindow.Show(candy, () =>
             {
                 // Restore HUD in case of replay / next scene

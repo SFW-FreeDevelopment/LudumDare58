@@ -10,8 +10,8 @@ public class ResultsWindow : MonoBehaviour
     public Button returnButton;       // "Return to Main Menu"
 
     System.Action onReturn;
-
-    void Awake()
+    
+    public void Setup()
     {
         if (root) root.SetActive(false);
         if (returnButton) returnButton.onClick.AddListener(() => {
