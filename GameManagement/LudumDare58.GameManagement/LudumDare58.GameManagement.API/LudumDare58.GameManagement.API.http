@@ -1,0 +1,6 @@
+@LudumDare58.GameManagement.API_HostAddress = http://localhost:5072
+
+GET {{LudumDare58.GameManagement.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
