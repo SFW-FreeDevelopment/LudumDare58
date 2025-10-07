@@ -32,7 +32,7 @@ public class CandyCatchMiniGame : MonoBehaviour
     public string sortingLayerName = "UI";   // make sure this exists, or use "Default"
     public int sortingOrder = 500;
 
-    // NEW: style the fall
+    // Style the fall
     [Header("Candy Fall Style")]
     [Tooltip("Random initial rotation in degrees (e.g., -25..25).")]
     public Vector2 spawnAngleDeg = new Vector2(-25f, 25f);
@@ -45,6 +45,14 @@ public class CandyCatchMiniGame : MonoBehaviour
     [Tooltip("Gravity scale for candies (1 = default).")]
     public float candyGravityScale = 0.8f;
 
+    // NEW: Fail-safe
+    [Header("Fail-Safe")]
+    [Tooltip("Seconds to wait after the LAST candy spawns before force-finishing if candies remain.")]
+    public float afterLastSpawnTimeout = 8f; // set 5–10s to taste
+    [Tooltip("Destroy candies that drift outside the play area + margin.")]
+    public bool killOffscreenCandies = true;
+    public float offscreenMargin = 2f;
+
     private int targetCount;
     private int caughtCount;
     private int spawned;
@@ -56,6 +64,10 @@ public class CandyCatchMiniGame : MonoBehaviour
     private Action<int> onComplete;
     private bool running;
 
+    // NEW: track when last candy spawned
+    private bool lastCandySpawned;
+    private float lastSpawnClock;
+
     public void Run(int candiesToSpawn, Action<int> onProgress, Action<int> onComplete)
     {
         this.targetCount = Mathf.Max(1, candiesToSpawn);
@@ -65,6 +77,10 @@ public class CandyCatchMiniGame : MonoBehaviour
         this.spawned = 0;
         this.spawnTimer = 0f;
         this.running = true;
+
+        // fail-safe init
+        lastCandySpawned = false;
+        lastSpawnClock = 0f;
 
         if (autoAlignToCamera) AlignToCamera();
 
@@ -96,6 +112,7 @@ public class CandyCatchMiniGame : MonoBehaviour
     {
         if (!running) return;
 
+        // Spawning
         if (spawned < targetCount)
         {
             spawnTimer -= Time.deltaTime;
@@ -104,21 +121,62 @@ public class CandyCatchMiniGame : MonoBehaviour
                 SpawnCandy();
                 spawned++;
                 spawnTimer = spawnInterval;
+
+                if (spawned >= targetCount)
+                {
+                    lastCandySpawned = true;
+                    lastSpawnClock = 0f; // start timeout window now
+                }
             }
         }
 
+        // Per-candy maintenance
         for (int i = liveCandies.Count - 1; i >= 0; i--)
         {
-            if (!liveCandies[i]) { liveCandies.RemoveAt(i); continue; }
-            if (liveCandies[i].transform.position.y < candyCleanupY)
+            var c = liveCandies[i];
+            if (!c) { liveCandies.RemoveAt(i); continue; }
+
+            // Below bottom cleanup
+            if (c.transform.position.y < candyCleanupY)
             {
-                Destroy(liveCandies[i]);
+                Destroy(c);
                 liveCandies.RemoveAt(i);
+                continue;
+            }
+
+            // Optional offscreen cleanup
+            if (killOffscreenCandies)
+            {
+                if (c.transform.position.x < areaMin.x - offscreenMargin ||
+                    c.transform.position.x > areaMax.x + offscreenMargin ||
+                    c.transform.position.y > areaMax.y + offscreenMargin)
+                {
+                    Destroy(c);
+                    liveCandies.RemoveAt(i);
+                }
             }
         }
 
+        // Normal completion
         if (spawned >= targetCount && liveCandies.Count == 0)
+        {
             Finish();
+            return;
+        }
+
+        // Fail-safe completion if candies linger
+        if (lastCandySpawned && liveCandies.Count > 0)
+        {
+            lastSpawnClock += Time.deltaTime;
+            if (lastSpawnClock >= afterLastSpawnTimeout)
+            {
+                for (int i = 0; i < liveCandies.Count; i++)
+                    if (liveCandies[i]) Destroy(liveCandies[i]);
+                liveCandies.Clear();
+                Finish();
+                return;
+            }
+        }
     }
 
     private void SpawnCandy()
@@ -144,10 +202,10 @@ public class CandyCatchMiniGame : MonoBehaviour
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         rb.interpolation = RigidbodyInterpolation2D.Interpolate; // smoother falling/rotation
 
-        // Apply spin (deg/sec) converted to rad/sec under the hood by Unity automatically
+        // Spin
         rb.angularVelocity = UnityEngine.Random.Range(spinDegPerSec.x, spinDegPerSec.y);
 
-        // Give a little sideways push and optional downward kick
+        // Sideways push + optional downward kick
         float lateral = UnityEngine.Random.Range(lateralImpulse.x, lateralImpulse.y);
         Vector2 impulse = new Vector2(lateral, -Mathf.Abs(downwardImpulse));
         if (impulse.sqrMagnitude > 0f)
@@ -161,7 +219,7 @@ public class CandyCatchMiniGame : MonoBehaviour
         if (!running) return;
         caughtCount++;
         onProgress?.Invoke(caughtCount);
-        
+
         AudioManager.I?.PlayCandy();
 
         if (candy)
